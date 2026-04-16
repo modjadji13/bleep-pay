@@ -1,0 +1,11 @@
+target/
+.env
+.cargo/
+admin/node_modules/
+admin/.env
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.metadata
+mobile/*.log
