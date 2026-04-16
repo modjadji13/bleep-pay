@@ -1,0 +1,16 @@
+{
+  "name": "bleep-pay-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node admin dashboard for Bleep Pay",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.22.1",
+    "pg": "^8.13.3"
+  }
+}

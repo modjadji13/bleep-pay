@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bleep Pay Admin</title>
+  <style>
+    :root {
+      --bg: #07111b;
+      --panel: #0f1c2a;
+      --panel-2: #132536;
+      --text: #edf3f8;
+      --muted: #90a3b8;
+      --accent: #30e7a9;
+      --accent-2: #3b82f6;
+      --border: rgba(255,255,255,0.08);
+      --danger: #ff7b7b;
+      --warning: #f6c863;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 30%),
+        radial-gradient(circle at top right, rgba(48, 231, 169, 0.12), transparent 28%),
+        linear-gradient(180deg, #08121d 0%, #050a11 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      margin-bottom: 28px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(2rem, 3vw, 3.4rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      max-width: 680px;
+      line-height: 1.6;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 18px rgba(48, 231, 169, 0.85);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(19,37,54,0.94), rgba(13,25,38,0.94));
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-inner {
+      padding: 22px;
+    }
+
+    .stat {
+      grid-column: span 3;
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat .value {
+      margin-top: 14px;
+      font-size: clamp(1.7rem, 2vw, 2.6rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+
+    .stat .meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .panel-wide {
+      grid-column: span 7;
+    }
+
+    .panel-side {
+      grid-column: span 5;
+    }
+
+    .panel-full {
+      grid-column: 1 / -1;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      letter-spacing: -0.03em;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    input, select, button {
+      font: inherit;
+    }
+
+    .control, .button {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      min-height: 42px;
+      padding: 0 14px;
+    }
+
+    .control::placeholder {
+      color: #7f91a4;
+    }
+
+    .button {
+      cursor: pointer;
+      background: linear-gradient(180deg, rgba(59,130,246,0.22), rgba(59,130,246,0.1));
+    }
+
+    .button.secondary {
+      background: rgba(255,255,255,0.03);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 13px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.95rem;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .phone {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    .money {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: 1px solid var(--border);
+    }
+
+    .status.completed {
+      color: var(--accent);
+      background: rgba(48, 231, 169, 0.08);
+    }
+
+    .status.pending {
+      color: var(--warning);
+      background: rgba(246, 200, 99, 0.1);
+    }
+
+    .status.failed {
+      color: var(--danger);
+      background: rgba(255, 123, 123, 0.1);
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 18px 0 4px;
+    }
+
+    .footer-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    @media (max-width: 980px) {
+      .stat,
+      .panel-wide,
+      .panel-side {
+        grid-column: 1 / -1;
+      }
+
+      .hero {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        padding: 18px 14px 34px;
+      }
+
+      .card-inner {
+        padding: 18px;
+      }
+
+      th, td {
+        font-size: 0.88rem;
+      }
+
+      .toolbar {
+        width: 100%;
+      }
+
+      .control, .button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <div class="badge"><span class="dot"></span> Bleep Pay Admin</div>
+        <h1>Operations dashboard for users, payments, and flow health.</h1>
+        <p>Node is doing the admin layer here: querying Postgres directly, exposing lightweight admin APIs, and rendering a browser dashboard without touching the Rust payment runtime.</p>
+      </div>
+      <div class="toolbar">
+        <input id="tokenInput" class="control" type="password" placeholder="Admin token (optional)">
+        <button id="refreshButton" class="button">Refresh</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card stat"><div class="card-inner"><div class="label">Users</div><div class="value" id="usersCount">-</div><div class="meta">Registered accounts</div></div></article>
+      <article class="card stat"><div class="card-inner"><div class="label">Transactions</div><div class="value" id="transactionsCount">-</div><div class="meta">All payment records</div></div></article>
+      <article class="card stat"><div class="card-inner"><div class="label">Completed volume</div><div class="value" id="volumeTotal">-</div><div class="meta">Settled payment volume</div></div></article>
+      <article class="card stat"><div class="card-inner"><div class="label">Queue health</div><div class="value" id="queueHealth">-</div><div class="meta">Pending vs failed status</div></div></article>
+
+      <article class="card panel-wide">
+        <div class="card-inner">
+          <div class="panel-head">
+            <h2>Recent transactions</h2>
+            <div class="toolbar">
+              <select id="statusFilter" class="control">
+                <option value="">All statuses</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Amount</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="transactionsTable"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card panel-side">
+        <div class="card-inner">
+          <div class="panel-head">
+            <h2>Newest users</h2>
+            <span class="muted">Latest 5</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Phone</th>
+                <th>Balance</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody id="recentUsersTable"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card panel-full">
+        <div class="card-inner">
+          <div class="panel-head">
+            <h2>User search</h2>
+            <div class="toolbar">
+              <input id="userSearch" class="control" type="text" placeholder="Search by phone number">
+              <button id="searchButton" class="button secondary">Search</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Phone</th>
+                <th>Balance</th>
+                <th>Completed received</th>
+                <th>Tx count</th>
+                <th>Stripe</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="usersTable"></tbody>
+          </table>
+          <div class="footer-note">If `ADMIN_TOKEN` is set on the server, paste it in the top bar and refresh. Without it, the dashboard runs open for local development.</div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
