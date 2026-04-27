@@ -30,7 +30,9 @@ async fn main() -> anyhow::Result<()> {
         // Auth
         .route("/auth/register", post(routes::auth::register))
         .route("/auth/login",    post(routes::auth::login))
+        .route("/auth/users/search", get(routes::auth::search_users))
         // Payments
+        .route("/transactions/history", get(routes::payments::get_history))
         .route("/payments/request", post(routes::payments::request_payment))
         .route("/payments/accept",  post(routes::payments::accept_payment))
         .route("/payments/decline", post(routes::payments::decline_payment))
