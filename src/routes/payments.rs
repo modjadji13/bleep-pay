@@ -1,7 +1,9 @@
 use axum::{extract::State, Json};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
+use sqlx::FromRow;
 
 use crate::{state::{AppState, PendingPayment}, error::AppError, routes::auth::AuthUser};
 
@@ -15,6 +17,16 @@ pub struct PaymentRequest {
 pub struct PaymentResponse {
     pub payment_id: Uuid,
     pub status: String,
+}
+
+#[derive(Serialize, FromRow)]
+pub struct HistoryTransaction {
+    pub id: Uuid,
+    pub from_user: Option<Uuid>,
+    pub to_user: Option<Uuid>,
+    pub amount_cents: i64,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
 }
 
 // POST /payments/request
@@ -50,6 +62,25 @@ pub async fn request_payment(
         payment_id,
         status: "pending".into(),
     }))
+}
+
+// GET /transactions/history
+pub async fn get_history(
+    State(state): State<Arc<AppState>>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<Vec<HistoryTransaction>>, AppError> {
+    let rows = sqlx::query_as::<_, HistoryTransaction>(
+        "SELECT id, from_user, to_user, amount_cents, status, created_at
+         FROM transactions
+         WHERE from_user = $1 OR to_user = $1
+         ORDER BY created_at DESC
+         LIMIT 50",
+    )
+    .bind(user_id)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(rows))
 }
 
 // POST /payments/accept  { payment_id }
