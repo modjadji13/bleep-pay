@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::{FromRequestParts, State},
+    extract::{FromRequestParts, Query, State},
     http::request::Parts,
     Json,
 };
@@ -94,6 +94,17 @@ pub struct AuthResponse {
     pub user_id: Uuid,
 }
 
+#[derive(Deserialize)]
+pub struct SearchUsersQuery {
+    pub phone: String,
+}
+
+#[derive(Serialize)]
+pub struct UserLookupResponse {
+    pub user_id: Uuid,
+    pub phone: String,
+}
+
 // ?? Handlers ?????????????????????????????????????????????????????????????????-
 
 // POST /auth/register
@@ -166,4 +177,34 @@ pub async fn login(
         token,
         user_id,
     }))
+}
+
+// GET /auth/users/search?phone=...
+pub async fn search_users(
+    State(state): State<Arc<AppState>>,
+    AuthUser(current_user_id): AuthUser,
+    Query(query): Query<SearchUsersQuery>,
+) -> Result<Json<Vec<UserLookupResponse>>, AppError> {
+    let phone = query.phone.trim();
+    if phone.is_empty() {
+        return Ok(Json(vec![]));
+    }
+
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, phone
+         FROM users
+         WHERE id <> $1 AND phone ILIKE '%' || $2 || '%'
+         ORDER BY created_at DESC
+         LIMIT 10",
+    )
+    .bind(current_user_id)
+    .bind(phone)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(
+        rows.into_iter()
+            .map(|(user_id, phone)| UserLookupResponse { user_id, phone })
+            .collect(),
+    ))
 }
