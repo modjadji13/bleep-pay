@@ -1,11 +1,15 @@
 use axum::{extract::State, Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use std::sync::Arc;
 use uuid::Uuid;
-use sqlx::FromRow;
 
-use crate::{state::{AppState, PendingPayment}, error::AppError, routes::auth::AuthUser};
+use crate::{
+    error::AppError,
+    routes::auth::AuthUser,
+    state::{AppState, PendingPayment},
+};
 
 #[derive(Deserialize)]
 pub struct PaymentRequest {
@@ -29,6 +33,14 @@ pub struct HistoryTransaction {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(FromRow)]
+struct PendingTransactionRow {
+    id: Uuid,
+    from_user: Uuid,
+    to_user: Uuid,
+    amount_cents: i64,
+}
+
 // POST /payments/request
 // Sender initiates: "I want to send $X to this person"
 pub async fn request_payment(
@@ -48,15 +60,28 @@ pub async fn request_payment(
         amount_cents: body.amount_cents,
     };
 
-    state.pending.insert(payment_id, pending);
+    sqlx::query(
+        "INSERT INTO transactions (id, from_user, to_user, amount_cents, status)
+         VALUES ($1, $2, $3, $4, 'pending')",
+    )
+    .bind(pending.id)
+    .bind(pending.from_user)
+    .bind(pending.to_user)
+    .bind(pending.amount_cents)
+    .execute(&state.db)
+    .await?;
 
-    // Push real-time event to the recipient
-    state.push_event(body.to_user_id, serde_json::json!({
-        "event": "payment_request",
-        "payment_id": payment_id,
-        "from_user": from_user,
-        "amount_cents": body.amount_cents,
-    }));
+    state.pending.insert(payment_id, pending.clone());
+
+    state.push_event(
+        body.to_user_id,
+        serde_json::json!({
+            "event": "payment_request",
+            "payment_id": payment_id,
+            "from_user": from_user,
+            "amount_cents": body.amount_cents,
+        }),
+    );
 
     Ok(Json(PaymentResponse {
         payment_id,
@@ -94,32 +119,20 @@ pub async fn accept_payment(
         .and_then(|s| s.parse().ok())
         .ok_or(AppError::BadRequest("Missing payment_id".into()))?;
 
-    let (_, pending) = state.pending
-        .remove(&payment_id)
-        .ok_or(AppError::NotFound("Payment not found or expired".into()))?;
+    let pending = load_pending_payment(&state, payment_id).await?;
+    state.pending.remove(&payment_id);
 
-    // Must be the intended recipient
     if pending.to_user != user_id {
         return Err(AppError::Unauthorized);
     }
 
-    // Execute the transfer via Stripe (or your payment processor)
-    // For now: stub - replace with real Stripe call
     execute_transfer(&state, &pending).await?;
 
-    // Record in DB
-    sqlx::query(
-        "INSERT INTO transactions (id, from_user, to_user, amount_cents, status)
-         VALUES ($1, $2, $3, $4, 'completed')",
-    )
-    .bind(pending.id)
-    .bind(pending.from_user)
-    .bind(pending.to_user)
-    .bind(pending.amount_cents)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("UPDATE transactions SET status = 'completed' WHERE id = $1")
+        .bind(payment_id)
+        .execute(&state.db)
+        .await?;
 
-    // Notify both parties
     let event = serde_json::json!({
         "event": "payment_completed",
         "payment_id": payment_id,
@@ -145,18 +158,25 @@ pub async fn decline_payment(
         .and_then(|s| s.parse().ok())
         .ok_or(AppError::BadRequest("Missing payment_id".into()))?;
 
-    let (_, pending) = state.pending
-        .remove(&payment_id)
-        .ok_or(AppError::NotFound("Payment not found".into()))?;
+    let pending = load_pending_payment(&state, payment_id).await?;
+    state.pending.remove(&payment_id);
 
     if pending.to_user != user_id {
         return Err(AppError::Unauthorized);
     }
 
-    state.push_event(pending.from_user, serde_json::json!({
-        "event": "payment_declined",
-        "payment_id": payment_id,
-    }));
+    sqlx::query("UPDATE transactions SET status = 'declined' WHERE id = $1")
+        .bind(payment_id)
+        .execute(&state.db)
+        .await?;
+
+    state.push_event(
+        pending.from_user,
+        serde_json::json!({
+            "event": "payment_declined",
+            "payment_id": payment_id,
+        }),
+    );
 
     Ok(Json(PaymentResponse {
         payment_id,
@@ -164,10 +184,30 @@ pub async fn decline_payment(
     }))
 }
 
+async fn load_pending_payment(state: &AppState, payment_id: Uuid) -> Result<PendingPayment, AppError> {
+    if let Some((_, pending)) = state.pending.remove(&payment_id) {
+        return Ok(pending);
+    }
+
+    let row = sqlx::query_as::<_, PendingTransactionRow>(
+        "SELECT id, from_user, to_user, amount_cents
+         FROM transactions
+         WHERE id = $1 AND status = 'pending'",
+    )
+    .bind(payment_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound("Payment not found or expired".into()))?;
+
+    Ok(PendingPayment {
+        id: row.id,
+        from_user: row.from_user,
+        to_user: row.to_user,
+        amount_cents: row.amount_cents,
+    })
+}
+
 async fn execute_transfer(_state: &AppState, payment: &PendingPayment) -> Result<(), AppError> {
-    // 1. Look up Stripe customer IDs for both users from DB
-    // 2. Call Stripe Transfer API
-    // For now: stub - replace with real Stripe call
     tracing::info!(
         "Transferring {} cents from {} to {}",
         payment.amount_cents, payment.from_user, payment.to_user
