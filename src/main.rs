@@ -16,6 +16,7 @@ use state::AppState;
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt::init();
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".into());
 
     let db = PgPoolOptions::new()
         .max_connections(10)
@@ -41,8 +42,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
-    tracing::info!("Listening on :8080");
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
+    tracing::info!("Listening on :{}", port);
     axum::serve(listener, app).await?;
 
     Ok(())
